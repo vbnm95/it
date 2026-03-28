@@ -9,7 +9,7 @@ export interface Company {
     offeringPrice: number;
     currentPrice: number;
     returnSinceIpo: number;
-    ownershipChangePct: number;
+    keyShareholdersChangePct: number;
     latestDisclosureDate: string;
     industry: string;
 }
@@ -26,7 +26,9 @@ export interface DisclosureEvent {
     filerName: string;
 }
 
-export interface OwnershipSnapshot {
+export interface KeyShareholder {
+    id: string;
+    holderName: string;
     ipoBasePct: number;
     latestPct: number;
     changePct: number;
@@ -35,5 +37,5 @@ export interface OwnershipSnapshot {
 export interface CompanyDetail extends Company {
     priceHistory: PricePoint[];
     disclosures: DisclosureEvent[];
-    ownership: OwnershipSnapshot;
+    keyShareholders: KeyShareholder[];
 }

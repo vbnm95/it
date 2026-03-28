@@ -47,27 +47,30 @@ export default function CompanyCard({ company }: CompanyCardProps) {
                         {company.listingDate}
                     </p>
                 </div>
+
                 <div>
                     <p className="text-xs text-slate-500">공모가</p>
                     <p className="mt-1 text-sm font-medium text-slate-900">
                         {formatNumber(company.offeringPrice)}원
                     </p>
                 </div>
+
                 <div>
                     <p className="text-xs text-slate-500">현재가</p>
                     <p className="mt-1 text-sm font-medium text-slate-900">
                         {formatNumber(company.currentPrice)}원
                     </p>
                 </div>
+
                 <div>
-                    <p className="text-xs text-slate-500">지분율 변화</p>
+                    <p className="text-xs text-slate-500">주요주주 지분율 변화</p>
                     <p className="mt-1 text-sm font-medium text-slate-900">
-                        {formatPercentPoint(company.ownershipChangePct)}
+                        {formatPercentPoint(company.keyShareholdersChangePct)}
                     </p>
                 </div>
             </div>
 
-            <p className="mt-4 text-sm text-slate-500">
+            <p className="mt-4 text-xs text-slate-500">
                 최근 공시일: {company.latestDisclosureDate}
             </p>
         </Link>
