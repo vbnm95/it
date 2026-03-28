@@ -1,65 +1,64 @@
-import Image from "next/image";
+import Link from "next/link";
+import PageContainer from "@/components/layout/PageContainer";
+import SummaryCard from "@/components/dashboard/SummaryCard";
+import { mockCompanies } from "@/data/mockCompanies";
 
-export default function Home() {
+export default function HomePage() {
+  const total = mockCompanies.length;
+  const kospi = mockCompanies.filter((c) => c.marketType === "KOSPI").length;
+  const kosdaq = mockCompanies.filter((c) => c.marketType === "KOSDAQ").length;
+
+  const topPerformer = [...mockCompanies].sort(
+    (a, b) => b.returnSinceIpo - a.returnSinceIpo
+  )[0];
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <PageContainer>
+      <section className="rounded-[28px] border border-slate-200 bg-white p-8 shadow-sm">
+        <p className="text-sm font-medium text-slate-500">IT · IPO Trace</p>
+        <h1 className="mt-3 text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
+          최근 1년 신규상장 기업의
+          <br />
+          주가 흐름과 지분율 변화를 추적합니다.
+        </h1>
+        <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-600 sm:text-base">
+          코스피·코스닥 신규상장 기업을 대상으로 상장 이후 가격 흐름,
+          최근 공시, 최대주주 및 특수관계인 지분율 변화를 한 화면에서
+          확인하는 웹앱 MVP입니다.
+        </p>
+
+        <div className="mt-6 flex flex-wrap gap-3">
+          <Link
+            href="/companies"
+            className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-medium text-white transition hover:bg-slate-800"
+          >
+            기업 목록 보기
+          </Link>
+        </div>
+      </section>
+
+      <section className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <SummaryCard label="최근 1년 신규상장 기업" value={`${total}개`} />
+        <SummaryCard label="코스피" value={`${kospi}개`} />
+        <SummaryCard label="코스닥" value={`${kosdaq}개`} />
+        <SummaryCard
+          label="상장 후 수익률 상위"
+          value={topPerformer.companyName}
+          subtext={`${topPerformer.returnSinceIpo.toFixed(1)}%`}
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+      </section>
+
+      <section className="mt-8 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h2 className="text-xl font-semibold text-slate-900">현재 MVP 범위</h2>
+        <div className="mt-4 grid gap-3 text-sm text-slate-600 sm:grid-cols-2">
+          <div className="rounded-2xl bg-slate-50 p-4">최근 1년 신규상장 기업 리스트</div>
+          <div className="rounded-2xl bg-slate-50 p-4">상장 후 주가 흐름 차트</div>
+          <div className="rounded-2xl bg-slate-50 p-4">최근 공시 이벤트 목록</div>
+          <div className="rounded-2xl bg-slate-50 p-4">
+            지분율 시작값 vs 최신값 비교
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+      </section>
+    </PageContainer>
   );
 }
