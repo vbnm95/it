@@ -1,6 +1,12 @@
 import Link from "next/link";
+
 import type { Company } from "@/types/company";
-import { formatNumber, formatPercentPoint } from "@/lib/utils";
+import {
+    formatCurrency,
+    formatDate,
+    formatPercent,
+    formatPercentPoint,
+} from "@/lib/utils";
 
 interface CompanyCardProps {
     company: Company;
@@ -8,71 +14,73 @@ interface CompanyCardProps {
 
 export default function CompanyCard({ company }: CompanyCardProps) {
     const returnColor =
-        company.returnSinceIpo > 0
+        company.returnSinceIpo !== null && company.returnSinceIpo > 0
             ? "text-emerald-600"
-            : company.returnSinceIpo < 0
+            : company.returnSinceIpo !== null && company.returnSinceIpo < 0
                 ? "text-rose-600"
                 : "text-slate-600";
 
     return (
         <Link
             href={`/companies/${company.stockCode}`}
-            className="block rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+            className="block rounded-3xl border border-slate-200 bg-white p-6 transition hover:border-slate-300 hover:shadow-sm"
         >
             <div className="flex items-start justify-between gap-4">
                 <div>
-                    <div className="flex items-center gap-2">
-                        <h3 className="text-lg font-semibold text-slate-900">
-                            {company.companyName}
-                        </h3>
-                        <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-600">
-                            {company.marketType}
-                        </span>
-                    </div>
-                    <p className="mt-1 text-sm text-slate-500">
-                        {company.industry} · {company.stockCode}
+                    <h3 className="text-xl font-semibold tracking-tight text-slate-900">
+                        {company.companyName}
+                    </h3>
+                    <p className="mt-2 text-sm text-slate-500">
+                        {company.marketType} · {company.stockCode} · {company.industry}
                     </p>
                 </div>
 
-                <div className={`text-right text-lg font-semibold ${returnColor}`}>
-                    {company.returnSinceIpo > 0 ? "+" : ""}
-                    {company.returnSinceIpo.toFixed(1)}%
+                <div className="text-right">
+                    <p className="text-xs font-medium text-slate-400">상장 후 수익률</p>
+                    <p className={`mt-1 text-lg font-semibold ${returnColor}`}>
+                        {formatPercent(company.returnSinceIpo)}
+                    </p>
                 </div>
             </div>
 
-            <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <div>
-                    <p className="text-xs text-slate-500">상장일</p>
-                    <p className="mt-1 text-sm font-medium text-slate-900">
-                        {company.listingDate}
+            <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                <div className="rounded-2xl bg-slate-50 px-4 py-3">
+                    <p className="text-xs font-medium text-slate-400">상장일</p>
+                    <p className="mt-2 text-sm font-medium text-slate-900">
+                        {formatDate(company.listingDate)}
                     </p>
                 </div>
 
-                <div>
-                    <p className="text-xs text-slate-500">공모가</p>
-                    <p className="mt-1 text-sm font-medium text-slate-900">
-                        {formatNumber(company.offeringPrice)}원
+                <div className="rounded-2xl bg-slate-50 px-4 py-3">
+                    <p className="text-xs font-medium text-slate-400">공모가</p>
+                    <p className="mt-2 text-sm font-medium text-slate-900">
+                        {formatCurrency(company.offeringPrice)}
                     </p>
                 </div>
 
-                <div>
-                    <p className="text-xs text-slate-500">현재가</p>
-                    <p className="mt-1 text-sm font-medium text-slate-900">
-                        {formatNumber(company.currentPrice)}원
+                <div className="rounded-2xl bg-slate-50 px-4 py-3">
+                    <p className="text-xs font-medium text-slate-400">현재가</p>
+                    <p className="mt-2 text-sm font-medium text-slate-900">
+                        {formatCurrency(company.currentPrice)}
                     </p>
                 </div>
 
-                <div>
-                    <p className="text-xs text-slate-500">주요주주 지분율 변화</p>
-                    <p className="mt-1 text-sm font-medium text-slate-900">
+                <div className="rounded-2xl bg-slate-50 px-4 py-3">
+                    <p className="text-xs font-medium text-slate-400">
+                        주요주주 지분율 변화
+                    </p>
+                    <p className="mt-2 text-sm font-medium text-slate-900">
                         {formatPercentPoint(company.keyShareholdersChangePct)}
                     </p>
                 </div>
             </div>
 
-            <p className="mt-4 text-xs text-slate-500">
-                최근 공시일: {company.latestDisclosureDate}
-            </p>
+            <div className="mt-4 rounded-2xl border border-slate-100 px-4 py-3">
+                <p className="text-xs font-medium text-slate-400">최근 공시일</p>
+                <p className="mt-2 text-sm font-medium text-slate-900">
+                    {formatDate(company.latestDisclosureDate)}
+                </p>
+            </div>
         </Link>
     );
 }
