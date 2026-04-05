@@ -8,16 +8,14 @@ from db import (
     fetch_active_companies,
     finish_sync_run,
     get_conn,
-    rebuild_key_shareholder_latest_for_company,
     replace_shareholder_ipo_base,
-    replace_shareholder_latest_raw,
     start_sync_run,
 )
 from utils import kst_today, log, parse_date
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="IPO Trace shareholder rebuild")
+    parser = argparse.ArgumentParser(description="IPO Trace IPO shareholder rebuild")
     parser.add_argument("--as-of", type=str, default=None)
     parser.add_argument("--stock-code", type=str, default=None)
     parser.add_argument("--verbose", action="store_true")
@@ -57,7 +55,6 @@ def main() -> None:
         stats = {
             "target_companies": 0,
             "ipo_base_rebuilt": 0,
-            "latest_raw_rebuilt": 0,
             "rebuilt_companies": 0,
             "errors": [],
         }
@@ -74,12 +71,10 @@ def main() -> None:
                 company_name = company["company_name"]
                 listing_date = company["listing_date"]
                 company_id = str(company["id"])
-                corp_code = company.get("dart_corp_code")
 
                 def _job():
                     result = {
                         "ipo_rebuilt": False,
-                        "latest_rebuilt": False,
                     }
 
                     ipo_snapshot = dart.fetch_ipo_snapshot(
@@ -92,17 +87,6 @@ def main() -> None:
                         replace_shareholder_ipo_base(conn, company_id=company_id, rows=ipo_rows)
                         result["ipo_rebuilt"] = True
 
-                    effective_corp_code = corp_code or ipo_snapshot.get("corp_code")
-                    if effective_corp_code:
-                        latest_rows = dart.fetch_latest_major_shareholders(
-                            corp_code=effective_corp_code,
-                            listing_date=listing_date,
-                        )
-                        if latest_rows:
-                            replace_shareholder_latest_raw(conn, company_id=company_id, rows=latest_rows)
-                            result["latest_rebuilt"] = True
-
-                    rebuild_key_shareholder_latest_for_company(conn, company_id=company_id)
                     return result
 
                 try:
@@ -111,8 +95,6 @@ def main() -> None:
 
                     if result["ipo_rebuilt"]:
                         stats["ipo_base_rebuilt"] += 1
-                    if result["latest_rebuilt"]:
-                        stats["latest_raw_rebuilt"] += 1
                     stats["rebuilt_companies"] += 1
 
                     log(f"[REBUILD] {stock_code} {company_name}", verbose=args.verbose)

@@ -56,13 +56,39 @@ class KRXClient:
                     timeout=REQUEST_TIMEOUT,
                 )
                 resp.raise_for_status()
+
                 payload = resp.json()
+
+                # -----------------------------
+                # 디버깅 로그
+                # -----------------------------
+                if self.verbose:
+                    print("=" * 80)
+                    print("[KRX DEBUG] endpoint:", endpoint)
+                    print("[KRX DEBUG] status_code:", resp.status_code)
+                    print("[KRX DEBUG] url:", resp.url)
+                    print("[KRX DEBUG] payload_type:", type(payload).__name__)
+                    if isinstance(payload, dict):
+                        print("[KRX DEBUG] payload_keys:", list(payload.keys()))
+                        print("[KRX DEBUG] payload_preview:", str(payload)[:1000])
+                    else:
+                        print("[KRX DEBUG] payload_preview:", str(payload)[:1000])
+
                 rows = payload.get("OutBlock_1") or []
                 if not isinstance(rows, list):
+                    if self.verbose:
+                        print("[KRX DEBUG] OutBlock_1 is not a list:", type(rows).__name__)
                     return []
+
                 return [r for r in rows if isinstance(r, dict)]
+
             except Exception as exc:  # noqa: BLE001
                 last_error = exc
+                if self.verbose:
+                    print("=" * 80)
+                    print("[KRX DEBUG][ERROR] endpoint:", endpoint)
+                    print("[KRX DEBUG][ERROR] bas_dd:", bas_dd.isoformat())
+                    print("[KRX DEBUG][ERROR]", repr(exc))
                 if attempt < REQUEST_RETRIES:
                     sleep_retry(attempt)
 

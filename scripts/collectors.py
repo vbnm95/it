@@ -2,26 +2,22 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 from decimal import Decimal
-from typing import Any, Callable
+from typing import Any
 
 from db import (
     archive_company,
     fetch_active_companies,
     fetch_company_map,
     fetch_expired_companies,
-    rebuild_key_shareholder_latest_for_company,
     replace_shareholder_ipo_base,
-    replace_shareholder_latest_raw,
-    update_company_latest_disclosure_date,
     update_company_price_snapshot,
     upsert_company,
-    upsert_disclosure,
     upsert_price_daily,
 )
 from krx_client import KRXBaseRow, KRXClient, KRXTradeRow
 from rules import is_excluded_security, is_seed_target
-from settings import DISCLOSURE_DAYS, TRACKING_YEARS
-from utils import business_days_back, calc_return_since_ipo, log, normalize_text
+from settings import TRACKING_YEARS
+from utils import business_days_back, calc_return_since_ipo, log
 
 
 TRACK_MARKETS = ("KOSPI", "KOSDAQ")
@@ -104,7 +100,6 @@ def _save_company_seed_bundle(
     row: KRXBaseRow,
     dart,
     trade_row: KRXTradeRow | None,
-    disclosure_days: int,
     verbose: bool,
 ) -> dict[str, Any]:
     dart_snapshot = dart.fetch_ipo_snapshot(
@@ -148,51 +143,12 @@ def _save_company_seed_bundle(
     if ipo_holders:
         replace_shareholder_ipo_base(conn, company_id=company_id, rows=ipo_holders)
 
-    corp_code = dart_snapshot.get("corp_code")
-    disclosures_saved = 0
-    latest_rows_saved = 0
-
-    if corp_code:
-        disclosures = dart.fetch_recent_disclosures(
-            corp_code=corp_code,
-            end_date=trade_row.date if trade_row else row.listing_date,
-            days_back=disclosure_days,
-            limit=20,
-        )
-        for filing in disclosures:
-            upsert_disclosure(
-                conn,
-                company_id=company_id,
-                rcept_no=filing.rcept_no,
-                rcept_dt=filing.rcept_dt,
-                report_nm=filing.report_nm,
-            )
-            disclosures_saved += 1
-
-        if disclosures:
-            update_company_latest_disclosure_date(
-                conn,
-                company_id=company_id,
-                latest_disclosure_date=disclosures[0].rcept_dt,
-            )
-
-        latest_rows = dart.fetch_latest_major_shareholders(
-            corp_code=corp_code,
-            listing_date=row.listing_date,
-        )
-        if latest_rows:
-            replace_shareholder_latest_raw(conn, company_id=company_id, rows=latest_rows)
-            latest_rows_saved = len(latest_rows)
-
-    rebuild_key_shareholder_latest_for_company(conn, company_id=company_id)
     log(f"[SAVE][COMPANY] {row.stock_code} {row.company_name} / company_id={company_id}", verbose=verbose)
 
     return {
         "status": "saved",
         "company_id": company_id,
         "ipo_holders_count": len(ipo_holders),
-        "disclosures_saved": disclosures_saved,
-        "latest_rows_saved": latest_rows_saved,
     }
 
 
@@ -204,9 +160,7 @@ def seed_companies(conn, *, krx: KRXClient, dart, bas_dd: date, verbose: bool = 
         "skipped_by_rules": 0,
         "skipped_no_ipo_filing": 0,
         "ipo_holders_saved_companies": 0,
-        "latest_shareholders_saved_companies": 0,
         "price_rows_saved": 0,
-        "disclosures_saved": 0,
         "archived_companies": 0,
         "errors": [],
     }
@@ -253,7 +207,6 @@ def seed_companies(conn, *, krx: KRXClient, dart, bas_dd: date, verbose: bool = 
                 row=row,
                 dart=dart,
                 trade_row=today_trade_map.get(row.stock_code),
-                disclosure_days=DISCLOSURE_DAYS,
                 verbose=verbose,
             )
 
@@ -269,9 +222,6 @@ def seed_companies(conn, *, krx: KRXClient, dart, bas_dd: date, verbose: bool = 
                 stats["price_rows_saved"] += 1
             if result["ipo_holders_count"] > 0:
                 stats["ipo_holders_saved_companies"] += 1
-            if result["latest_rows_saved"] > 0:
-                stats["latest_shareholders_saved_companies"] += 1
-            stats["disclosures_saved"] += result["disclosures_saved"]
 
         except Exception as exc:  # noqa: BLE001
             stats["errors"].append(
@@ -303,8 +253,8 @@ def add_new_listings(
         "skipped_existing": 0,
         "skipped_excluded": 0,
         "skipped_no_ipo_filing": 0,
+        "ipo_holders_saved_companies": 0,
         "price_rows_saved": 0,
-        "disclosures_saved": 0,
         "errors": [],
     }
 
@@ -339,7 +289,6 @@ def add_new_listings(
                 row=row,
                 dart=dart,
                 trade_row=today_trade_map.get(row.stock_code),
-                disclosure_days=DISCLOSURE_DAYS,
                 verbose=verbose,
             )
 
@@ -353,7 +302,9 @@ def add_new_listings(
             stats["new_companies"] += 1
             if today_trade_map.get(row.stock_code):
                 stats["price_rows_saved"] += 1
-            stats["disclosures_saved"] += result["disclosures_saved"]
+            if result["ipo_holders_count"] > 0:
+                stats["ipo_holders_saved_companies"] += 1
+
             company_map[row.stock_code] = {"id": result["company_id"], "stock_code": row.stock_code}
 
         except Exception as exc:  # noqa: BLE001
@@ -462,133 +413,6 @@ def sync_prices(
                 }
             )
             log(f"[ERROR][PRICE_SNAPSHOT] {company['stock_code']} {company['company_name']} / {exc}", verbose=True)
-
-    return stats
-
-
-def sync_disclosures(
-    conn,
-    *,
-    dart,
-    bas_dd: date,
-    disclosure_days: int,
-    verbose: bool = False,
-) -> dict[str, Any]:
-    stats: dict[str, Any] = {
-        "target_companies": 0,
-        "companies_updated": 0,
-        "disclosures_saved": 0,
-        "errors": [],
-    }
-
-    companies = fetch_active_companies(conn, as_of=bas_dd)
-    stats["target_companies"] = len(companies)
-
-    for idx, company in enumerate(companies, start=1):
-        corp_code = normalize_text(company.get("dart_corp_code"))
-        if not corp_code:
-            continue
-
-        def _job() -> dict[str, Any]:
-            disclosures = dart.fetch_recent_disclosures(
-                corp_code=corp_code,
-                end_date=bas_dd,
-                days_back=disclosure_days,
-                limit=20,
-            )
-
-            saved_count = 0
-            for filing in disclosures:
-                upsert_disclosure(
-                    conn,
-                    company_id=str(company["id"]),
-                    rcept_no=filing.rcept_no,
-                    rcept_dt=filing.rcept_dt,
-                    report_nm=filing.report_nm,
-                )
-                saved_count += 1
-
-            updated = False
-            if disclosures:
-                update_company_latest_disclosure_date(
-                    conn,
-                    company_id=str(company["id"]),
-                    latest_disclosure_date=disclosures[0].rcept_dt,
-                )
-                updated = True
-
-            return {"saved_count": saved_count, "updated": updated}
-
-        try:
-            result = _run_with_savepoint(conn, f"sp_disclosure_{idx}", _job)
-            stats["disclosures_saved"] += result["saved_count"]
-            if result["updated"]:
-                stats["companies_updated"] += 1
-        except Exception as exc:  # noqa: BLE001
-            stats["errors"].append(
-                {
-                    "stock_code": str(company["stock_code"]),
-                    "company_name": company["company_name"],
-                    "stage": "disclosure",
-                    "error": str(exc),
-                }
-            )
-            log(f"[ERROR][DISCLOSURE] {company['stock_code']} {company['company_name']} / {exc}", verbose=True)
-
-    return stats
-
-
-def sync_latest_shareholders(
-    conn,
-    *,
-    dart,
-    bas_dd: date,
-    verbose: bool = False,
-) -> dict[str, Any]:
-    stats: dict[str, Any] = {
-        "target_companies": 0,
-        "latest_raw_replaced": 0,
-        "rebuilt_companies": 0,
-        "errors": [],
-    }
-
-    companies = fetch_active_companies(conn, as_of=bas_dd)
-    stats["target_companies"] = len(companies)
-
-    for idx, company in enumerate(companies, start=1):
-        corp_code = normalize_text(company.get("dart_corp_code"))
-        if not corp_code:
-            continue
-
-        def _job() -> dict[str, bool]:
-            latest_rows = dart.fetch_latest_major_shareholders(
-                corp_code=corp_code,
-                listing_date=company["listing_date"],
-            )
-
-            replaced = False
-            if latest_rows:
-                replace_shareholder_latest_raw(conn, company_id=str(company["id"]), rows=latest_rows)
-                replaced = True
-
-            rebuild_key_shareholder_latest_for_company(conn, company_id=str(company["id"]))
-            return {"replaced": replaced}
-
-        try:
-            result = _run_with_savepoint(conn, f"sp_holder_{idx}", _job)
-            if result["replaced"]:
-                stats["latest_raw_replaced"] += 1
-            stats["rebuilt_companies"] += 1
-        except Exception as exc:  # noqa: BLE001
-            stats["errors"].append(
-                {
-                    "stock_code": str(company["stock_code"]),
-                    "company_name": company["company_name"],
-                    "stage": "latest_shareholder",
-                    "error": str(exc),
-                }
-            )
-            log(f"[ERROR][SHAREHOLDER] {company['stock_code']} {company['company_name']} / {exc}", verbose=True)
 
     return stats
 

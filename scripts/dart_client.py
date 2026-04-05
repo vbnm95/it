@@ -311,29 +311,6 @@ class DARTClient:
                     sleep_retry(attempt)
 
         raise DARTAPIError(f"DART document 다운로드 실패: {rcept_no} / {last_error}")
-
-    def _is_pure_public_ipo_filing(self, report_nm: str) -> bool:
-        name = normalize_text(report_nm).replace(" ", "")
-        if not name:
-            return False
-
-        if "증권발행실적보고서" not in name:
-            return False
-
-        excluded_keywords = (
-            "합병",
-            "합병등",
-            "분할",
-            "분할합병",
-            "주식교환",
-            "주식이전",
-            "재상장",
-            "우회상장",
-        )
-        if any(keyword in name for keyword in excluded_keywords):
-            return False
-
-        return True
     
     def _find_ipo_filing_candidates(self, *, corp_code: str, listing_date: date) -> list[DartFiling]:
         rows = self._list_filings(
