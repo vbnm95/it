@@ -1,15 +1,20 @@
 import Link from "next/link";
 
 import type { Company } from "@/types/company";
-import {
-    formatCurrency,
-    formatDate,
-    formatPercent,
-    formatPercentPoint,
-} from "@/lib/utils";
+import { formatCurrency, formatPercent } from "@/lib/utils";
 
 interface CompanyCardProps {
     company: Company;
+}
+
+function formatShortDate(value: string): string {
+    if (!value) return "-";
+
+    const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!match) return value;
+
+    const [, year, month, day] = match;
+    return `${year.slice(2)}-${month}-${day}`;
 }
 
 export default function CompanyCard({ company }: CompanyCardProps) {
@@ -23,63 +28,58 @@ export default function CompanyCard({ company }: CompanyCardProps) {
     return (
         <Link
             href={`/companies/${company.stockCode}`}
-            className="block rounded-3xl border border-slate-200 bg-white p-6 transition hover:border-slate-300 hover:shadow-sm"
+            className="group block rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md"
         >
             <div className="flex items-start justify-between gap-4">
                 <div>
-                    <h3 className="text-xl font-semibold tracking-tight text-slate-900">
+                    <h3 className="text-2xl font-semibold tracking-tight text-slate-900">
                         {company.companyName}
                     </h3>
-                    <p className="mt-2 text-sm text-slate-500">
+                    <p className="mt-3 text-sm text-slate-500">
                         {company.marketType} · {company.stockCode} · {company.industry}
                     </p>
                 </div>
 
                 <div className="text-right">
                     <p className="text-xs font-medium text-slate-400">상장 후 수익률</p>
-                    <p className={`mt-1 text-lg font-semibold ${returnColor}`}>
+                    <p className={`mt-2 text-3xl font-semibold ${returnColor}`}>
                         {formatPercent(company.returnSinceIpo)}
                     </p>
                 </div>
             </div>
 
-            <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                <div className="rounded-2xl bg-slate-50 px-4 py-3">
+            <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <div className="rounded-2xl bg-slate-50 px-4 py-4">
                     <p className="text-xs font-medium text-slate-400">상장일</p>
-                    <p className="mt-2 text-sm font-medium text-slate-900">
-                        {formatDate(company.listingDate)}
+                    <p className="mt-2 text-base font-semibold text-slate-900">
+                        {formatShortDate(company.listingDate)}
                     </p>
                 </div>
 
-                <div className="rounded-2xl bg-slate-50 px-4 py-3">
+                <div className="rounded-2xl bg-slate-50 px-4 py-4">
                     <p className="text-xs font-medium text-slate-400">공모가</p>
-                    <p className="mt-2 text-sm font-medium text-slate-900">
+                    <p className="mt-2 text-base font-semibold text-slate-900">
                         {formatCurrency(company.offeringPrice)}
                     </p>
                 </div>
 
-                <div className="rounded-2xl bg-slate-50 px-4 py-3">
+                <div className="rounded-2xl bg-slate-50 px-4 py-4">
                     <p className="text-xs font-medium text-slate-400">현재가</p>
-                    <p className="mt-2 text-sm font-medium text-slate-900">
+                    <p className="mt-2 text-base font-semibold text-slate-900">
                         {formatCurrency(company.currentPrice)}
                     </p>
                 </div>
 
-                <div className="rounded-2xl bg-slate-50 px-4 py-3">
-                    <p className="text-xs font-medium text-slate-400">
-                        주요주주 지분율 변화
+                <div className="rounded-2xl bg-slate-50 px-4 py-4">
+                    <p className="text-xs font-medium leading-5 text-slate-400">
+                        주요 주주
+                        <br />
+                        지분율 합계
                     </p>
-                    <p className="mt-2 text-sm font-medium text-slate-900">
-                        {formatPercentPoint(company.keyShareholdersChangePct)}
+                    <p className="mt-2 text-base font-semibold text-slate-900">
+                        {formatPercent(company.keyShareholdersChangePct)}
                     </p>
                 </div>
-            </div>
-
-            <div className="mt-4 rounded-2xl border border-slate-100 px-4 py-3">
-                <p className="text-xs font-medium text-slate-400">최근 공시일</p>
-                <p className="mt-2 text-sm font-medium text-slate-900">
-                    {formatDate(company.latestDisclosureDate)}
-                </p>
             </div>
         </Link>
     );

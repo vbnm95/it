@@ -11,7 +11,6 @@ import {
     formatCurrency,
     formatDate,
     formatPercent,
-    formatPercentPoint,
 } from "@/lib/utils";
 
 interface CompanyDetailPageProps {
@@ -37,12 +36,16 @@ export default async function CompanyDetailPage({
     const offeringPriceMissing = company.offeringPrice === null;
     const returnMissing = company.returnSinceIpo === null;
 
+    const ipoBasePctSum = company.keyShareholders.reduce((sum, holder) => {
+        return sum + (holder.ipoBasePct ?? 0);
+    }, 0);
+
     return (
         <PageContainer>
             <div className="mb-6">
                 <Link
                     href="/companies"
-                    className="text-sm font-medium text-slate-500 transition hover:text-slate-900"
+                    className="inline-flex items-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
                 >
                     ← 기업 목록으로 돌아가기
                 </Link>
@@ -56,11 +59,6 @@ export default async function CompanyDetailPage({
                 <h1 className="mt-3 text-4xl font-semibold tracking-tight text-slate-900">
                     {company.companyName}
                 </h1>
-
-                <p className="mt-5 max-w-4xl text-base leading-7 text-slate-600">
-                    상장 이후 가격 흐름, 최근 공시, 그리고 주요 주주 지분율 변화를 함께
-                    확인하는 상세 화면입니다.
-                </p>
             </section>
 
             <section className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -98,19 +96,19 @@ export default async function CompanyDetailPage({
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                     <div>
                         <h2 className="text-xl font-semibold text-slate-900">
-                            주요 주주 지분율 변화
+                            IPO 당시 주요 주주 지분율
                         </h2>
                         <p className="mt-2 text-sm leading-6 text-slate-500">
-                            IPO 기준 지분율과 최신 지분율을 비교해서 보여줍니다.
+                            IPO 당시 주요 주주의 주식의 종류와 지분율을 보여줍니다.
                         </p>
                     </div>
 
                     <div className="rounded-2xl bg-slate-50 px-4 py-3">
                         <p className="text-xs font-medium text-slate-400">
-                            주요주주 지분율 변화 합계
+                            주요 주주 지분율 합계
                         </p>
                         <p className="mt-2 text-lg font-semibold text-slate-900">
-                            {formatPercentPoint(company.keyShareholdersChangePct)}
+                            {formatPercent(ipoBasePctSum)}
                         </p>
                     </div>
                 </div>
@@ -123,14 +121,11 @@ export default async function CompanyDetailPage({
                                     <th className="border-b border-slate-200 px-4 py-3 text-left text-sm font-medium text-slate-500">
                                         주주명
                                     </th>
+                                    <th className="border-b border-slate-200 px-4 py-3 text-left text-sm font-medium text-slate-500">
+                                        주식의 종류
+                                    </th>
                                     <th className="border-b border-slate-200 px-4 py-3 text-right text-sm font-medium text-slate-500">
                                         IPO 기준 지분율
-                                    </th>
-                                    <th className="border-b border-slate-200 px-4 py-3 text-right text-sm font-medium text-slate-500">
-                                        최신 지분율
-                                    </th>
-                                    <th className="border-b border-slate-200 px-4 py-3 text-right text-sm font-medium text-slate-500">
-                                        지분율 변화
                                     </th>
                                 </tr>
                             </thead>
@@ -139,20 +134,12 @@ export default async function CompanyDetailPage({
                                     <tr key={holder.id}>
                                         <td className="border-b border-slate-100 px-4 py-3 text-sm text-slate-900">
                                             <div className="font-medium">{holder.holderName}</div>
-                                            {holder.holderRole ? (
-                                                <div className="mt-1 text-xs text-slate-500">
-                                                    {holder.holderRole}
-                                                </div>
-                                            ) : null}
+                                        </td>
+                                        <td className="border-b border-slate-100 px-4 py-3 text-sm text-slate-700">
+                                            {holder.holderRole ?? "-"}
                                         </td>
                                         <td className="border-b border-slate-100 px-4 py-3 text-right text-sm text-slate-700">
                                             {formatPercent(holder.ipoBasePct)}
-                                        </td>
-                                        <td className="border-b border-slate-100 px-4 py-3 text-right text-sm text-slate-700">
-                                            {formatPercent(holder.latestPct)}
-                                        </td>
-                                        <td className="border-b border-slate-100 px-4 py-3 text-right text-sm font-medium text-slate-900">
-                                            {formatPercentPoint(holder.changePct)}
                                         </td>
                                     </tr>
                                 ))}
@@ -162,37 +149,6 @@ export default async function CompanyDetailPage({
                 ) : (
                     <div className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
                         아직 주요 주주 상세 데이터가 없습니다.
-                    </div>
-                )}
-            </section>
-
-            <section className="mt-8 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                    <div>
-                        <h2 className="text-xl font-semibold text-slate-900">최근 공시</h2>
-                        <p className="mt-2 text-sm text-slate-500">
-                            최근 공시일: {formatDate(company.latestDisclosureDate)}
-                        </p>
-                    </div>
-                </div>
-
-                {company.disclosures.length ? (
-                    <div className="mt-6 grid gap-3">
-                        {company.disclosures.map((item) => (
-                            <div
-                                key={item.id}
-                                className="rounded-2xl border border-slate-200 px-4 py-4"
-                            >
-                                <p className="font-medium text-slate-900">{item.reportName}</p>
-                                <p className="mt-1 text-sm text-slate-500">
-                                    {formatDate(item.reportDate)} · {item.filerName}
-                                </p>
-                            </div>
-                        ))}
-                    </div>
-                ) : (
-                    <div className="mt-6 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
-                        아직 최근 공시 상세 데이터가 없습니다.
                     </div>
                 )}
             </section>
