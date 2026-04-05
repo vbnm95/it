@@ -7,6 +7,7 @@ import type {
     DisclosureRow,
     KeyShareholderLatestRow,
     PriceDailyRow,
+    ShareholderIpoBaseRow,
 } from "@/types/company";
 import { normalizeStockCode } from "@/lib/utils";
 import { supabaseSelectMany, supabaseSelectSingle } from "@/lib/supabase";
@@ -14,17 +15,10 @@ import { supabaseSelectMany, supabaseSelectSingle } from "@/lib/supabase";
 const COMPANY_COLUMNS = [
     "id",
     "stock_code",
-    "dart_corp_code",
     "company_name",
-    "company_name_eng",
     "market_type",
-    "security_group",
-    "sector_name",
-    "industry",
     "listing_date",
     "offering_price",
-    "homepage_url",
-    "ir_url",
     "current_price",
     "current_price_date",
     "return_since_ipo",
@@ -46,12 +40,6 @@ function coerceNumber(
     }
 
     return null;
-}
-
-function coerceText(value: string | null | undefined): string {
-    if (!value) return "-";
-    const trimmed = value.trim();
-    return trimmed || "-";
 }
 
 function computeReturnSinceIpo(
@@ -87,15 +75,7 @@ function mapRowToCompany(row: CompanyRow): Company {
         returnSinceIpo,
         keyShareholdersChangePct: coerceNumber(row.key_shareholders_change_pct),
         latestDisclosureDate: row.latest_disclosure_date,
-        industry:
-            coerceText(row.industry) !== "-"
-                ? coerceText(row.industry)
-                : coerceText(row.sector_name),
-        companyNameEng: row.company_name_eng,
-        sectorName: row.sector_name,
-        securityGroup: row.security_group,
-        homepageUrl: row.homepage_url,
-        irUrl: row.ir_url,
+        industry: row.market_type,
         currentPriceDate: row.current_price_date,
         isActive: row.is_active,
     };
@@ -151,53 +131,49 @@ export async function getCompanyDetailByStockCode(
     const company = mapRowToCompany(companyRow);
 
     const priceParams = new URLSearchParams({
-        select: "id,company_id,trade_date,close_price",
+        select: "id,company_id,date,close",
         company_id: `eq.${company.id}`,
-        order: "trade_date.asc",
+        order: "date.asc",
     });
 
-    const shareholderParams = new URLSearchParams({
+    const shareholderLatestParams = new URLSearchParams({
         select:
-            "company_id,holder_key,holder_name,holder_role,ipo_base_pct,latest_pct,change_pct",
+            "id,company_id,holder_key,holder_name,holder_role,ipo_base_pct,latest_pct,change_pct",
         company_id: `eq.${company.id}`,
-        order: "change_pct.desc",
+        order: "change_pct.desc,holder_name.asc",
     });
 
-    const disclosureByCompanyParams = new URLSearchParams({
-        select: "id,rcept_no,company_id,dart_corp_code,stock_code,rcept_dt,report_nm",
+    const shareholderIpoBaseParams = new URLSearchParams({
+        select: "id,company_id,holder_key,holder_name,holder_role,base_pct",
+        company_id: `eq.${company.id}`,
+        order: "base_pct.desc,holder_name.asc",
+    });
+
+    const disclosureParams = new URLSearchParams({
+        select: "id,rcept_no,company_id,rcept_dt,report_nm",
         company_id: `eq.${company.id}`,
         order: "rcept_dt.desc",
         limit: "20",
     });
 
-    const [priceRows, shareholderRows, disclosureRowsByCompany] =
+    const [priceRows, shareholderLatestRows, shareholderIpoBaseRows, disclosureRows] =
         await Promise.all([
             safeSelectMany<PriceDailyRow>("price_daily", priceParams),
             safeSelectMany<KeyShareholderLatestRow>(
                 "key_shareholder_latest",
-                shareholderParams,
+                shareholderLatestParams,
             ),
-            safeSelectMany<DisclosureRow>("disclosures", disclosureByCompanyParams),
+            safeSelectMany<ShareholderIpoBaseRow>(
+                "shareholder_ipo_base",
+                shareholderIpoBaseParams,
+            ),
+            safeSelectMany<DisclosureRow>("disclosures", disclosureParams),
         ]);
-
-    const disclosureRows =
-        disclosureRowsByCompany.length > 0
-            ? disclosureRowsByCompany
-            : await safeSelectMany<DisclosureRow>(
-                "disclosures",
-                new URLSearchParams({
-                    select:
-                        "id,rcept_no,company_id,dart_corp_code,stock_code,rcept_dt,report_nm",
-                    stock_code: `eq.${company.stockCode}`,
-                    order: "rcept_dt.desc",
-                    limit: "20",
-                }),
-            );
 
     const priceHistory = priceRows
         .map((row) => ({
-            date: row.trade_date,
-            close: coerceNumber(row.close_price),
+            date: row.date,
+            close: coerceNumber(row.close),
         }))
         .filter(
             (row): row is { date: string; close: number } =>
@@ -212,14 +188,24 @@ export async function getCompanyDetailByStockCode(
         disclosureUrl: null,
     }));
 
-    const keyShareholders = shareholderRows.map((row) => ({
-        id: row.holder_key,
-        holderName: row.holder_name,
-        holderRole: row.holder_role,
-        ipoBasePct: coerceNumber(row.ipo_base_pct),
-        latestPct: coerceNumber(row.latest_pct),
-        changePct: coerceNumber(row.change_pct),
-    }));
+    const keyShareholders =
+        shareholderLatestRows.length > 0
+            ? shareholderLatestRows.map((row) => ({
+                id: row.holder_key,
+                holderName: row.holder_name,
+                holderRole: row.holder_role,
+                ipoBasePct: coerceNumber(row.ipo_base_pct),
+                latestPct: coerceNumber(row.latest_pct),
+                changePct: coerceNumber(row.change_pct),
+            }))
+            : shareholderIpoBaseRows.map((row) => ({
+                id: row.holder_key,
+                holderName: row.holder_name,
+                holderRole: row.holder_role,
+                ipoBasePct: coerceNumber(row.base_pct),
+                latestPct: null,
+                changePct: null,
+            }));
 
     return {
         ...company,

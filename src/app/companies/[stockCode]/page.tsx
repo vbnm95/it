@@ -12,7 +12,6 @@ import {
     formatDate,
     formatPercent,
     formatPercentPoint,
-    normalizeExternalUrl,
 } from "@/lib/utils";
 
 interface CompanyDetailPageProps {
@@ -35,9 +34,6 @@ export default async function CompanyDetailPage({
         notFound();
     }
 
-    const homepageUrl = normalizeExternalUrl(company.homepageUrl);
-    const irUrl = normalizeExternalUrl(company.irUrl);
-
     const offeringPriceMissing = company.offeringPrice === null;
     const returnMissing = company.returnSinceIpo === null;
 
@@ -54,7 +50,7 @@ export default async function CompanyDetailPage({
 
             <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
                 <p className="text-sm font-medium text-slate-500">
-                    {company.marketType} · {company.stockCode} · {company.industry}
+                    {company.marketType} · {company.stockCode}
                 </p>
 
                 <h1 className="mt-3 text-4xl font-semibold tracking-tight text-slate-900">
@@ -62,36 +58,9 @@ export default async function CompanyDetailPage({
                 </h1>
 
                 <p className="mt-5 max-w-4xl text-base leading-7 text-slate-600">
-                    상장 이후 가격 흐름, 최근 공시, 그리고 최초 상장 시점 기준 주요
-                    주주와 이후 새롭게 추가된 주요 주주의 지분율 변화를 함께 확인하는
-                    상세 화면입니다.
+                    상장 이후 가격 흐름, 최근 공시, 그리고 주요 주주 지분율 변화를 함께
+                    확인하는 상세 화면입니다.
                 </p>
-
-                {(homepageUrl || irUrl) && (
-                    <div className="mt-6 flex flex-wrap gap-2">
-                        {homepageUrl ? (
-                            <a
-                                href={homepageUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="rounded-2xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-                            >
-                                홈페이지
-                            </a>
-                        ) : null}
-
-                        {irUrl ? (
-                            <a
-                                href={irUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="rounded-2xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-                            >
-                                IR 자료
-                            </a>
-                        ) : null}
-                    </div>
-                )}
             </section>
 
             <section className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -132,9 +101,7 @@ export default async function CompanyDetailPage({
                             주요 주주 지분율 변화
                         </h2>
                         <p className="mt-2 text-sm leading-6 text-slate-500">
-                            최초 상장 시점의 주요 주주는 지분율이 0%가 되어도 유지해서
-                            보여주고, 이후 새롭게 들어온 주요 주주는 IPO 기준 0.0%로
-                            표시합니다.
+                            IPO 기준 지분율과 최신 지분율을 비교해서 보여줍니다.
                         </p>
                     </div>
 
@@ -218,7 +185,7 @@ export default async function CompanyDetailPage({
                             >
                                 <p className="font-medium text-slate-900">{item.reportName}</p>
                                 <p className="mt-1 text-sm text-slate-500">
-                                    {item.reportDate} · {item.filerName}
+                                    {formatDate(item.reportDate)} · {item.filerName}
                                 </p>
                             </div>
                         ))}

@@ -95,15 +95,20 @@ def normalize_text(value: Any) -> str:
 def normalize_stock_code(value: Any) -> Optional[str]:
     if value is None:
         return None
+
     raw = str(value).strip().upper()
-    if raw.startswith("A") and len(raw) >= 7:
-        raw = raw[1:]
-    digits = re.sub(r"\D", "", raw)
-    if not digits:
+    if not raw:
         return None
-    if len(digits) > 6:
-        digits = digits[-6:]
-    return digits.zfill(6)
+
+    # 일부 소스는 A005930 / A0088M0 형태를 사용
+    if raw.startswith("A") and len(raw) >= 2:
+        raw = raw[1:]
+
+    # 영숫자 종목코드 허용
+    if re.fullmatch(r"[0-9A-Z]{6,9}", raw):
+        return raw
+
+    return None
 
 
 def normalize_holder_key(value: Any) -> str:

@@ -1,39 +1,153 @@
 from __future__ import annotations
 
 import argparse
+from datetime import date
 
-from db import fetch_active_companies, get_conn, rebuild_key_shareholder_latest_for_company
-from utils import dumps_pretty, parse_date, previous_business_day
+from dart_client import DARTClient
+from db import (
+    fetch_active_companies,
+    finish_sync_run,
+    get_conn,
+    rebuild_key_shareholder_latest_for_company,
+    replace_shareholder_ipo_base,
+    replace_shareholder_latest_raw,
+    start_sync_run,
+)
+from utils import kst_today, log, parse_date
 
 
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="IPO Trace rebuild shareholders")
-    parser.add_argument("--as-of", dest="as_of", help="YYYY-MM-DD or YYYYMMDD")
-    parser.add_argument("--stock-code", dest="stock_code", help="특정 종목코드만 재계산")
-    return parser.parse_args()
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="IPO Trace shareholder rebuild")
+    parser.add_argument("--as-of", type=str, default=None)
+    parser.add_argument("--stock-code", type=str, default=None)
+    parser.add_argument("--verbose", action="store_true")
+    return parser
+
+
+def _run_company_savepoint(conn, savepoint_name: str, fn):
+    with conn.cursor() as cur:
+        cur.execute(f"SAVEPOINT {savepoint_name}")
+    try:
+        result = fn()
+    except Exception:
+        with conn.cursor() as cur:
+            cur.execute(f"ROLLBACK TO SAVEPOINT {savepoint_name}")
+            cur.execute(f"RELEASE SAVEPOINT {savepoint_name}")
+        raise
+    else:
+        with conn.cursor() as cur:
+            cur.execute(f"RELEASE SAVEPOINT {savepoint_name}")
+        return result
 
 
 def main() -> None:
-    args = parse_args()
-    bas_dd = parse_date(args.as_of) if args.as_of else previous_business_day()
-    if not bas_dd:
-        raise RuntimeError("잘못된 날짜 형식입니다.")
+    parser = build_parser()
+    args = parser.parse_args()
 
-    rebuilt = 0
+    bas_dd: date = parse_date(args.as_of) if args.as_of else kst_today()
+    if bas_dd is None:
+        raise SystemExit("잘못된 --as-of 형식입니다.")
+
+    stock_code_filter = (args.stock_code or "").strip().upper() if args.stock_code else None
+    dart = DARTClient(verbose=args.verbose)
 
     with get_conn(autocommit=False) as conn:
-        companies = fetch_active_companies(conn, as_of=bas_dd)
+        sync_run_id = start_sync_run(conn, job_name="rebuild_shareholders", run_date=bas_dd)
 
-        if args.stock_code:
-            companies = [c for c in companies if c["stock_code"] == str(args.stock_code).zfill(6)]
+        stats = {
+            "target_companies": 0,
+            "ipo_base_rebuilt": 0,
+            "latest_raw_rebuilt": 0,
+            "rebuilt_companies": 0,
+            "errors": [],
+        }
 
-        for company in companies:
-            rebuild_key_shareholder_latest_for_company(conn, company_id=str(company["id"]))
-            rebuilt += 1
+        try:
+            companies = fetch_active_companies(conn, as_of=bas_dd)
+            if stock_code_filter:
+                companies = [c for c in companies if str(c["stock_code"]).upper() == stock_code_filter]
 
-        conn.commit()
+            stats["target_companies"] = len(companies)
 
-    print(dumps_pretty({"rebuilt_companies": rebuilt}))
+            for idx, company in enumerate(companies, start=1):
+                stock_code = str(company["stock_code"]).upper()
+                company_name = company["company_name"]
+                listing_date = company["listing_date"]
+                company_id = str(company["id"])
+                corp_code = company.get("dart_corp_code")
+
+                def _job():
+                    result = {
+                        "ipo_rebuilt": False,
+                        "latest_rebuilt": False,
+                    }
+
+                    ipo_snapshot = dart.fetch_ipo_snapshot(
+                        stock_code=stock_code,
+                        company_name=company_name,
+                        listing_date=listing_date,
+                    )
+                    ipo_rows = ipo_snapshot.get("ipo_holders") or []
+                    if ipo_rows:
+                        replace_shareholder_ipo_base(conn, company_id=company_id, rows=ipo_rows)
+                        result["ipo_rebuilt"] = True
+
+                    effective_corp_code = corp_code or ipo_snapshot.get("corp_code")
+                    if effective_corp_code:
+                        latest_rows = dart.fetch_latest_major_shareholders(
+                            corp_code=effective_corp_code,
+                            listing_date=listing_date,
+                        )
+                        if latest_rows:
+                            replace_shareholder_latest_raw(conn, company_id=company_id, rows=latest_rows)
+                            result["latest_rebuilt"] = True
+
+                    rebuild_key_shareholder_latest_for_company(conn, company_id=company_id)
+                    return result
+
+                try:
+                    savepoint_name = f"sp_rebuild_{idx}"
+                    result = _run_company_savepoint(conn, savepoint_name, _job)
+
+                    if result["ipo_rebuilt"]:
+                        stats["ipo_base_rebuilt"] += 1
+                    if result["latest_rebuilt"]:
+                        stats["latest_raw_rebuilt"] += 1
+                    stats["rebuilt_companies"] += 1
+
+                    log(f"[REBUILD] {stock_code} {company_name}", verbose=args.verbose)
+
+                except Exception as exc:  # noqa: BLE001
+                    stats["errors"].append(
+                        {
+                            "stock_code": stock_code,
+                            "company_name": company_name,
+                            "error": str(exc),
+                        }
+                    )
+                    log(f"[ERROR] {stock_code} {company_name} / {exc}", verbose=True)
+
+            finish_sync_run(
+                conn,
+                sync_run_id=sync_run_id,
+                status="SUCCESS",
+                stats=stats,
+                error_message=None,
+            )
+            conn.commit()
+
+        except Exception as exc:  # noqa: BLE001
+            conn.rollback()
+            with get_conn(autocommit=False) as fail_conn:
+                finish_sync_run(
+                    fail_conn,
+                    sync_run_id=sync_run_id,
+                    status="FAILED",
+                    stats=stats,
+                    error_message=str(exc),
+                )
+                fail_conn.commit()
+            raise
 
 
 if __name__ == "__main__":

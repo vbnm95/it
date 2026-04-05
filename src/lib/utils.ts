@@ -1,71 +1,65 @@
-function isFiniteNumber(value: number | null | undefined): value is number {
-    return typeof value === "number" && Number.isFinite(value);
-}
-
-export function normalizeStockCode(value: string): string {
-    const digits = value.replace(/\D/g, "");
-    if (!digits) return value;
-    return digits.length >= 6 ? digits.slice(-6) : digits.padStart(6, "0");
-}
-
-export function formatNumber(value: number | null | undefined): string {
-    if (!isFiniteNumber(value)) return "-";
-    return new Intl.NumberFormat("ko-KR").format(value);
+export function normalizeStockCode(value: string | number): string {
+    return String(value).padStart(6, "0");
 }
 
 export function formatCurrency(value: number | null | undefined): string {
-    if (!isFiniteNumber(value)) return "-";
-    return `${formatNumber(value)}원`;
+    if (value === null || value === undefined || !Number.isFinite(value)) {
+        return "-";
+    }
+
+    return `${Math.round(value).toLocaleString("ko-KR")}원`;
 }
 
-export function formatPercent(
-    value: number | null | undefined,
-    digits = 1,
-): string {
-    if (!isFiniteNumber(value)) return "-";
-    const sign = value > 0 ? "+" : "";
-    return `${sign}${value.toFixed(digits)}%`;
-}
+export function formatNumber(value: number | null | undefined): string {
+    if (value === null || value === undefined || !Number.isFinite(value)) {
+        return "-";
+    }
 
-export function formatPercentPoint(
-    value: number | null | undefined,
-    digits = 1,
-): string {
-    if (!isFiniteNumber(value)) return "-";
-    const sign = value > 0 ? "+" : "";
-    return `${sign}${value.toFixed(digits)}%p`;
+    return value.toLocaleString("ko-KR");
 }
 
 export function formatDate(value: string | null | undefined): string {
     if (!value) return "-";
 
-    const trimmed = value.trim();
-    if (!trimmed) return "-";
-
-    if (/^\d{4}-\d{2}-\d{2}/.test(trimmed)) {
-        return trimmed.slice(0, 10);
-    }
-
-    const date = new Date(trimmed);
+    const date = new Date(value);
     if (Number.isNaN(date.getTime())) {
-        return trimmed;
+        return value;
     }
 
-    const year = date.getFullYear();
-    const month = `${date.getMonth() + 1}`.padStart(2, "0");
-    const day = `${date.getDate()}`.padStart(2, "0");
-    return `${year}-${month}-${day}`;
+    return new Intl.DateTimeFormat("ko-KR", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+    }).format(date);
+}
+
+export function formatPercent(value: number | null | undefined): string {
+    if (value === null || value === undefined || !Number.isFinite(value)) {
+        return "-";
+    }
+
+    const sign = value > 0 ? "+" : "";
+    return `${sign}${value.toFixed(2)}%`;
+}
+
+export function formatPercentPoint(value: number | null | undefined): string {
+    if (value === null || value === undefined || !Number.isFinite(value)) {
+        return "-";
+    }
+
+    const sign = value > 0 ? "+" : "";
+    return `${sign}${value.toFixed(2)}%p`;
 }
 
 export function normalizeExternalUrl(
-    value: string | null | undefined,
+    url: string | null | undefined,
 ): string | null {
-    if (!value) return null;
+    if (!url) return null;
 
-    const trimmed = value.trim().replace(/^\/+/, "");
+    const trimmed = url.trim();
     if (!trimmed) return null;
 
-    if (/^https?:\/\//i.test(trimmed)) {
+    if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
         return trimmed;
     }
 

@@ -1,46 +1,79 @@
 from __future__ import annotations
 
+from dataclasses import asdict
+from datetime import date, timedelta
+from typing import Any, Optional
+
+from krx_client import KRXBaseRow
+from settings import SEED_LOOKBACK_DAYS
 from utils import normalize_text
 
 
-def is_target_security(
-    *,
-    company_name: str,
-    market_type: str,
-    security_group: str | None,
-    stock_cert_type: str | None,
-    sector_name: str | None,
-) -> bool:
-    if market_type not in ("KOSPI", "KOSDAQ"):
-        return False
+EXCLUDE_NAME_KEYWORDS = (
+    "스팩",
+    "SPAC",
+    "리츠",
+    "REIT",
+)
 
-    name = normalize_text(company_name)
-    group = normalize_text(security_group)
-    cert = normalize_text(stock_cert_type)
-    sector = normalize_text(sector_name)
+EXCLUDE_SECURITY_GROUP_KEYWORDS = (
+    "스팩",
+    "리츠",
+    "ETF",
+    "ETN",
+    "ELW",
+    "선박투자",
+    "인프라투융자",
+    "인프라펀드",
+)
 
-    name_u = name.upper()
-    group_u = group.upper()
-    cert_u = cert.upper()
-    sector_u = sector.upper()
+EXCLUDE_STOCK_CERT_TYPE_KEYWORDS = (
+    "수익증권",
+    "투자회사",
+    "리츠",
+    "상장지수",
+    "선박투자",
+    "인프라",
+)
 
-    if "스팩" in name or "SPAC" in name_u or "SPAC" in sector_u:
-        return False
+PREFERRED_REPORT_NAMES = (
+    "증권발행실적보고서",
+)
 
-    if group and "주권" not in group:
-        return False
 
-    blocked_group_keywords = [
-        "ETF", "ETN", "ELW", "리츠", "REIT", "인프라", "수익증권",
-        "선박투자", "신주인수권", "전환사채", "교환사채", "파생", "외국"
-    ]
-    if any(x in group_u for x in blocked_group_keywords):
-        return False
+def row_to_dict(row: KRXBaseRow) -> dict[str, Any]:
+    return asdict(row)
 
-    blocked_cert_keywords = [
-        "우선", "전환", "상환", "신주인수권", "종류주"
-    ]
-    if any(x in cert_u for x in blocked_cert_keywords):
-        return False
 
-    return True
+def _contains_any(value: Optional[str], keywords: tuple[str, ...]) -> bool:
+    text = normalize_text(value).upper()
+    return any(keyword.upper() in text for keyword in keywords)
+
+
+def is_recent_listing(row: KRXBaseRow, *, as_of: date) -> bool:
+    lower_bound = as_of - timedelta(days=SEED_LOOKBACK_DAYS)
+    return lower_bound <= row.listing_date <= as_of
+
+
+def is_excluded_security(row: KRXBaseRow) -> tuple[bool, Optional[str]]:
+    if _contains_any(row.company_name, EXCLUDE_NAME_KEYWORDS):
+        return True, "company_name_excluded"
+
+    if _contains_any(row.security_group, EXCLUDE_SECURITY_GROUP_KEYWORDS):
+        return True, "security_group_excluded"
+
+    if _contains_any(row.stock_cert_type, EXCLUDE_STOCK_CERT_TYPE_KEYWORDS):
+        return True, "stock_cert_type_excluded"
+
+    return False, None
+
+
+def is_seed_target(row: KRXBaseRow, *, as_of: date) -> tuple[bool, str]:
+    if not is_recent_listing(row, as_of=as_of):
+        return False, "listing_date_out_of_range"
+
+    excluded, reason = is_excluded_security(row)
+    if excluded:
+        return False, reason or "excluded_security"
+
+    return True, "ok"

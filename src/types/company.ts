@@ -12,11 +12,7 @@ export interface Company {
     keyShareholdersChangePct: number | null;
     latestDisclosureDate: string | null;
     industry: string;
-    companyNameEng?: string | null;
-    sectorName?: string | null;
-    securityGroup?: string | null;
-    homepageUrl?: string | null;
-    irUrl?: string | null;
+
     currentPriceDate?: string | null;
     isActive?: boolean;
 }
@@ -52,43 +48,41 @@ export interface CompanyDetail extends Company {
 export interface CompanyRow {
     id: string;
     stock_code: string;
-    dart_corp_code: string | null;
     company_name: string;
-    company_name_eng: string | null;
     market_type: MarketType;
-    security_group: string | null;
-    sector_name: string | null;
-    industry: string | null;
     listing_date: string;
+    dart_corp_code?: string | null;
+
     offering_price: number | string | null;
-    homepage_url: string | null;
-    ir_url: string | null;
     current_price: number | string | null;
     current_price_date: string | null;
     return_since_ipo: number | string | null;
+
     latest_disclosure_date: string | null;
     key_shareholders_change_pct: number | string | null;
+
+    tracking_started_at?: string | null;
+    tracking_expires_at?: string | null;
     is_active: boolean;
 }
 
 export interface PriceDailyRow {
     id: number;
     company_id: string;
-    trade_date: string;
-    close_price: number | string | null;
+    date: string;
+    close: number | string | null;
 }
 
 export interface DisclosureRow {
     id: number;
     rcept_no: string;
-    company_id: string | null;
-    dart_corp_code: string | null;
-    stock_code: string | null;
+    company_id: string;
     rcept_dt: string;
     report_nm: string;
 }
 
 export interface KeyShareholderLatestRow {
+    id: number;
     company_id: string;
     holder_key: string;
     holder_name: string;
@@ -96,4 +90,13 @@ export interface KeyShareholderLatestRow {
     ipo_base_pct: number | string | null;
     latest_pct: number | string | null;
     change_pct: number | string | null;
+}
+
+export interface ShareholderIpoBaseRow {
+    id: number;
+    company_id: string;
+    holder_key: string;
+    holder_name: string;
+    holder_role: string | null;
+    base_pct: number | string | null;
 }
