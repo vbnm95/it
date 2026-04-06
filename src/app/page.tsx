@@ -1,17 +1,13 @@
-export const dynamic = "force-dynamic";
-
 import Link from "next/link";
 
 import PageContainer from "@/components/layout/PageContainer";
-import SummaryCard from "@/components/dashboard/SummaryCard";
 import { getCompanies } from "@/lib/it-data";
 import { formatPercent } from "@/lib/utils";
 
-function getReturnColor(value: number | null) {
-  if (value === null) return "text-slate-600";
-  if (value > 0) return "text-emerald-600";
-  if (value < 0) return "text-rose-600";
-  return "text-slate-600";
+export const dynamic = "force-dynamic";
+
+function getReturnSortValue(value: number | null) {
+  return value ?? Number.NEGATIVE_INFINITY;
 }
 
 export default async function HomePage() {
@@ -21,18 +17,12 @@ export default async function HomePage() {
   const kospi = companies.filter((c) => c.marketType === "KOSPI").length;
   const kosdaq = companies.filter((c) => c.marketType === "KOSDAQ").length;
 
-  const hasReturnData = companies.some((c) => c.returnSinceIpo !== null);
-
   const topFive = [...companies]
-    .sort((a, b) => {
-      if (hasReturnData) {
-        const aValue = a.returnSinceIpo ?? Number.NEGATIVE_INFINITY;
-        const bValue = b.returnSinceIpo ?? Number.NEGATIVE_INFINITY;
-        return bValue - aValue;
-      }
-
-      return b.listingDate.localeCompare(a.listingDate);
-    })
+    .sort(
+      (a, b) =>
+        getReturnSortValue(b.returnSinceIpo) -
+        getReturnSortValue(a.returnSinceIpo),
+    )
     .slice(0, 5);
 
   return (
@@ -40,91 +30,100 @@ export default async function HomePage() {
       <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
         <p className="text-sm font-medium text-slate-500">IT · IPO Trace</p>
 
-        <h1 className="mt-3 text-4xl font-semibold tracking-tight text-slate-900">
-          최근 1년 신규상장 기업의
+        <h1 className="mt-3 text-4xl font-semibold tracking-tight text-slate-900 md:text-5xl">
+          신규 상장 기업의
           <br />
-          주가 흐름과 지분율 변화를 추적합니다.
+          상장 후 주가 흐름을 추적합니다.
         </h1>
 
-        <p className="mt-5 max-w-3xl text-base leading-7 text-slate-600">
-          코스피·코스닥 신규상장 기업을 대상으로 상장 이후 가격 흐름, 최근
-          공시, 최대주주 및 특수관계인 지분율 변화를 한 화면에서 확인하는 웹앱
-          MVP입니다.
+        <p className="mt-6 max-w-3xl text-base leading-7 text-slate-600">
+          IPO Trace는 공모를 통해 신규상장한 기업을 대상으로, 공모가와 IPO 당시
+          주요 주주 정보, 그리고 상장 후 가격 흐름을 구조화해서 보여주는
+          데이터 기반 웹앱입니다.
         </p>
+      </section>
 
-        <div className="mt-8 grid gap-4 md:grid-cols-3">
-          <SummaryCard label="최근 1년 신규상장 기업 수" value={`${total}개`} />
-          <SummaryCard label="코스피 개수" value={`${kospi}개`} />
-          <SummaryCard label="코스닥 개수" value={`${kosdaq}개`} />
+      <section className="mt-8 grid gap-4 md:grid-cols-3">
+        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <p className="text-sm font-medium text-slate-400">추적 기업 수</p>
+          <p className="mt-3 text-3xl font-semibold text-slate-900">{total}개</p>
+          <p className="mt-2 text-sm text-slate-500">현재 추적 대상 기업 기준</p>
+        </div>
+
+        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <p className="text-sm font-medium text-slate-400">KOSPI</p>
+          <p className="mt-3 text-3xl font-semibold text-slate-900">{kospi}개</p>
+          <p className="mt-2 text-sm text-slate-500">현재 추적 대상 기업 수</p>
+        </div>
+
+        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <p className="text-sm font-medium text-slate-400">KOSDAQ</p>
+          <p className="mt-3 text-3xl font-semibold text-slate-900">
+            {kosdaq}개
+          </p>
+          <p className="mt-2 text-sm text-slate-500">현재 추적 대상 기업 수</p>
         </div>
       </section>
 
-      <section className="mt-10">
-        <div className="mb-4 flex items-end justify-between gap-4">
-          <div>
-            <h2 className="text-2xl font-semibold tracking-tight text-slate-900">
-              상장 후 수익률 상위 5개
-            </h2>
-            <p className="mt-2 text-sm text-slate-500">
-              최근 1년 신규상장 기업 중 상장 이후 수익률이 높은 종목을 먼저
-              보여줍니다.
-            </p>
-          </div>
-
-          <Link
-            href="/companies"
-            className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800"
-          >
-            전체 기업 보기
-          </Link>
+      <section className="mt-8 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div>
+          <h2 className="text-2xl font-semibold tracking-tight text-slate-900">
+            상장 후 수익률 상위 5개
+          </h2>
+          <p className="mt-2 text-sm leading-6 text-slate-500">
+            현재 추적 중인 기업 중 상장 이후 수익률이 높은 종목을 먼저 보여줍니다.
+          </p>
         </div>
 
-        {topFive.length ? (
-          <div className="grid gap-4">
-            {topFive.map((company, index) => (
-              <Link
-                key={company.id}
-                href={`/companies/${company.stockCode}`}
-                className="rounded-3xl border border-slate-200 bg-white p-5 transition hover:border-slate-300 hover:shadow-sm"
-              >
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex min-w-0 items-center gap-4">
+        <div className="mt-6 space-y-5">
+          {topFive.length ? (
+            topFive.map((company, index) => {
+              const returnValue = company.returnSinceIpo;
+              const returnColor =
+                returnValue !== null && returnValue > 0
+                  ? "text-emerald-600"
+                  : returnValue !== null && returnValue < 0
+                    ? "text-rose-600"
+                    : "text-slate-600";
+
+              return (
+                <Link
+                  key={company.id}
+                  href={`/companies/${company.stockCode}`}
+                  className="flex items-center justify-between gap-6 rounded-[28px] border border-slate-200 bg-white px-5 py-5 transition hover:border-slate-300 hover:bg-slate-50"
+                >
+                  <div className="flex min-w-0 items-center gap-5">
                     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-700">
                       {index + 1}
                     </div>
 
                     <div className="min-w-0">
-                      <p className="truncate text-lg font-semibold text-slate-900">
+                      <div className="truncate text-xl font-semibold tracking-tight text-slate-900">
                         {company.companyName}
-                      </p>
-                      <p className="mt-1 truncate text-sm text-slate-500">
-                        {company.marketType} · {company.stockCode} ·{" "}
-                        {company.industry}
-                      </p>
+                      </div>
+                      <div className="mt-2 truncate text-sm text-slate-500">
+                        {company.marketType} · {company.stockCode}
+                      </div>
                     </div>
                   </div>
 
-                  <div className="text-right">
-                    <p className="text-xs font-medium text-slate-400">
+                  <div className="shrink-0 text-right">
+                    <div className="text-xs font-medium text-slate-400">
                       상장 후 수익률
-                    </p>
-                    <p
-                      className={`mt-1 text-lg font-semibold ${getReturnColor(
-                        company.returnSinceIpo,
-                      )}`}
-                    >
-                      {formatPercent(company.returnSinceIpo)}
-                    </p>
+                    </div>
+                    <div className={`mt-2 text-3xl font-semibold ${returnColor}`}>
+                      {formatPercent(returnValue)}
+                    </div>
                   </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        ) : (
-          <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-10 text-center text-sm text-slate-500">
-            표시할 기업 데이터가 없습니다.
-          </div>
-        )}
+                </Link>
+              );
+            })
+          ) : (
+            <div className="rounded-2xl border border-dashed border-slate-300 px-6 py-12 text-center text-sm text-slate-500">
+              아직 표시할 기업 데이터가 없습니다.
+            </div>
+          )}
+        </div>
       </section>
     </PageContainer>
   );

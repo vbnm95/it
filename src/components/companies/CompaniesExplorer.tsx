@@ -91,7 +91,7 @@ export default function CompaniesExplorer({
             <p className="text-sm font-medium text-slate-500">Companies</p>
 
             <h1 className="mt-3 text-4xl font-semibold tracking-tight text-slate-900">
-                최근 1년 신규상장 기업 목록
+                최근 신규상장 기업 목록
             </h1>
 
             <p className="mt-4 text-base leading-7 text-slate-600">
@@ -166,7 +166,7 @@ export default function CompaniesExplorer({
                             onClick={() => setSortOption("OWNERSHIP_DESC")}
                             className={filterButtonClass(sortOption === "OWNERSHIP_DESC")}
                         >
-                            주요 주주 지분율 합계 큰순
+                            IPO 당시 주요 주주 지분율 합계 큰순
                         </button>
                     </div>
                 </div>

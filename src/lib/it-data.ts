@@ -25,6 +25,11 @@ const COMPANY_COLUMNS = [
     "is_active",
 ].join(",");
 
+type ShareholderIpoBaseListRow = Pick<
+    ShareholderIpoBaseRow,
+    "company_id" | "base_pct"
+>;
+
 function coerceNumber(
     value: number | string | null | undefined,
 ): number | null {
@@ -91,6 +96,20 @@ async function safeSelectMany<T>(
     }
 }
 
+function buildIpoOwnershipSumMap(
+    rows: ShareholderIpoBaseListRow[],
+): Map<string, number> {
+    const sumMap = new Map<string, number>();
+
+    for (const row of rows) {
+        const current = sumMap.get(row.company_id) ?? 0;
+        const basePct = coerceNumber(row.base_pct) ?? 0;
+        sumMap.set(row.company_id, current + basePct);
+    }
+
+    return sumMap;
+}
+
 export async function getCompanies(): Promise<Company[]> {
     const params = new URLSearchParams({
         select: COMPANY_COLUMNS,
@@ -103,7 +122,36 @@ export async function getCompanies(): Promise<Company[]> {
         params.toString(),
     );
 
-    return rows.map(mapRowToCompany);
+    if (!rows.length) {
+        return [];
+    }
+
+    const companyIds = rows.map((row) => row.id);
+    const shareholderParams = new URLSearchParams({
+        select: "company_id,base_pct",
+        company_id: `in.(${companyIds.join(",")})`,
+        limit: "10000",
+    });
+
+    const shareholderRows = await safeSelectMany<ShareholderIpoBaseListRow>(
+        "shareholder_ipo_base",
+        shareholderParams,
+    );
+
+    const ipoOwnershipSumMap = buildIpoOwnershipSumMap(shareholderRows);
+
+    return rows.map((row) => {
+        const company = mapRowToCompany(row);
+        const ipoOwnershipSum = ipoOwnershipSumMap.get(row.id);
+
+        return {
+            ...company,
+            keyShareholdersChangePct:
+                ipoOwnershipSum !== undefined
+                    ? Number(ipoOwnershipSum.toFixed(2))
+                    : company.keyShareholdersChangePct,
+        };
+    });
 }
 
 export async function getCompanyDetailByStockCode(
@@ -167,8 +215,13 @@ export async function getCompanyDetailByStockCode(
         changePct: null,
     }));
 
+    const ipoBasePctSum = shareholderRows.reduce((sum, row) => {
+        return sum + (coerceNumber(row.base_pct) ?? 0);
+    }, 0);
+
     return {
         ...company,
+        keyShareholdersChangePct: Number(ipoBasePctSum.toFixed(2)),
         priceHistory,
         disclosures: [],
         keyShareholders,

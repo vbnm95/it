@@ -71,11 +71,7 @@ export default function CompanyCard({ company }: CompanyCardProps) {
                 </div>
 
                 <div className="rounded-2xl bg-slate-50 px-4 py-4">
-                    <p className="text-xs font-medium leading-5 text-slate-400">
-                        주요 주주
-                        <br />
-                        지분율 합계
-                    </p>
+                    <p className="text-xs font-medium text-slate-400">지분율 합계</p>
                     <p className="mt-2 text-base font-semibold text-slate-900">
                         {formatPercent(company.keyShareholdersChangePct)}
                     </p>

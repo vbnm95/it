@@ -3,58 +3,137 @@ import PageContainer from "@/components/layout/PageContainer";
 export default function AboutPage() {
     return (
         <PageContainer>
-            <section>
+            <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
                 <p className="text-sm font-medium text-slate-500">About IT · IPO Trace</p>
 
-                <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
-                    최근 1년 신규상장 기업을 좁고 깊게 추적하는 정보 분석형 웹앱
+                <h1 className="mt-3 text-4xl font-semibold tracking-tight text-slate-900 md:text-5xl">
+                    신규 상장 기업의
+                    <br />
+                    IPO 정보와 상장 후 흐름을
+                    <br />
+                    구조화해서 보여주는 프로젝트
                 </h1>
 
-                <p className="mt-4 text-base leading-7 text-slate-600 sm:text-lg">
-                    IPO Trace는 최근 1년 내 코스피·코스닥 신규상장 기업을 대상으로,
-                    상장 이후 주가 흐름과 핵심 공시, 그리고 주요 주주의 지분율 변화를
-                    한 화면에서 확인할 수 있도록 설계한 웹앱 MVP입니다.
+                <p className="mt-6 max-w-4xl text-base leading-7 text-slate-600">
+                    IPO Trace는 공모를 통해 신규상장한 기업을 대상으로, IPO 당시 공모가와
+                    주요 주주 정보를 저장하고 상장 후 주가 흐름을 함께 추적하기 위해 만든
+                    데이터 기반 웹앱 및 수집 프로젝트입니다.
                 </p>
             </section>
 
-            <section className="mt-10 grid gap-4 md:grid-cols-2">
-                <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-                    <h2 className="text-lg font-semibold text-slate-900">왜 이 프로젝트인가</h2>
-                    <p className="mt-3 text-sm leading-6 text-slate-600">
-                        일반적인 주가 서비스는 종목 범위가 넓지만, 상장 직후 기업만 따로
-                        깊게 추적하기에는 불편한 경우가 많습니다. IPO Trace는 최근 상장
-                        종목이라는 좁은 범위를 기준으로, 상장 후 흐름을 빠르게 비교하고
-                        해석할 수 있도록 만드는 데 초점을 둡니다.
+            <section className="mt-8 grid gap-4 lg:grid-cols-3">
+                <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2">
+                    <p className="text-sm font-semibold text-slate-400">PROJECT GOAL</p>
+                    <h2 className="mt-3 text-2xl font-semibold text-slate-900">
+                        왜 IPO Trace를 만들었는가
+                    </h2>
+                    <p className="mt-4 text-base leading-7 text-slate-600">
+                        일반적인 주가 서비스는 모든 종목을 넓게 다루지만, 신규 상장 기업만
+                        따로 모아서 IPO 당시 구조와 상장 후 흐름을 함께 보기는 불편한 경우가
+                        많습니다. IPO Trace는 이 지점을 해결하기 위해 시작되었고, 신규 상장
+                        기업의 초기 정보를 구조화해서 장기적으로 추적할 수 있도록 설계된
+                        프로젝트입니다.
                     </p>
                 </div>
 
-                <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-                    <h2 className="text-lg font-semibold text-slate-900">MVP 범위</h2>
-                    <p className="mt-3 text-sm leading-6 text-slate-600">
-                        최근 1년 신규상장 기업 리스트, 기업 상세 화면, 상장 후 주가 흐름 차트,
-                        최근 공시 목록, 주요 주주 지분율 변화 비교까지를 1차 MVP 범위로
-                        설정했습니다.
-                    </p>
-                </div>
-
-                <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-                    <h2 className="text-lg font-semibold text-slate-900">데이터 방향</h2>
-                    <p className="mt-3 text-sm leading-6 text-slate-600">
-                        향후에는 신규상장 목록, 공시 데이터, 주가 데이터, 주요 주주 지분율
-                        스냅샷을 연결해 더미 데이터 기반 화면을 실제 데이터 기반 서비스로
-                        전환하는 방향을 목표로 합니다.
-                    </p>
-                </div>
-
-                <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-                    <h2 className="text-lg font-semibold text-slate-900">포트폴리오 포인트</h2>
-                    <p className="mt-3 text-sm leading-6 text-slate-600">
-                        이 프로젝트는 단순 차트 앱이 아니라, 특정 비즈니스 질문에 맞춰
-                        범위를 좁히고 정보를 재구성하는 UX/데이터 제품 설계 역량을 보여주는
-                        포트폴리오용 웹앱으로 기획되었습니다.
+                <div className="rounded-3xl border border-slate-200 bg-slate-900 p-6 shadow-sm">
+                    <p className="text-sm font-semibold text-slate-400">CORE SUMMARY</p>
+                    <p className="mt-4 text-xl font-semibold leading-8 text-white">
+                        IPO 당시 정보는 정리하고,
+                        <br />
+                        상장 후 가격 흐름은
+                        <br />
+                        꾸준히 추적합니다.
                     </p>
                 </div>
             </section>
+
+            <section className="mt-8 grid gap-4 lg:grid-cols-2">
+                <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+                    <p className="text-sm font-semibold text-slate-400">INCLUDED</p>
+                    <h2 className="mt-3 text-2xl font-semibold text-slate-900">
+                        현재 포함하는 범위
+                    </h2>
+
+                    <div className="mt-6 space-y-4">
+                        <div className="rounded-2xl bg-slate-50 px-5 py-4">
+                            <p className="text-base font-semibold text-slate-900">
+                                신규 상장 기업 seed 적재
+                            </p>
+                            <p className="mt-2 text-sm leading-6 text-slate-600">
+                                KOSPI, KOSDAQ 신규 상장 기업을 선별해서 추적 대상에 포함합니다.
+                            </p>
+                        </div>
+
+                        <div className="rounded-2xl bg-slate-50 px-5 py-4">
+                            <p className="text-base font-semibold text-slate-900">
+                                IPO 당시 공모 정보 저장
+                            </p>
+                            <p className="mt-2 text-sm leading-6 text-slate-600">
+                                공모가, 상장일, 종목 기본정보 등 IPO 시점 핵심 정보를 저장합니다.
+                            </p>
+                        </div>
+
+                        <div className="rounded-2xl bg-slate-50 px-5 py-4">
+                            <p className="text-base font-semibold text-slate-900">
+                                IPO 당시 주요 주주 명단 및 지분율 파싱
+                            </p>
+                            <p className="mt-2 text-sm leading-6 text-slate-600">
+                                증권발행실적보고서를 기준으로 주요 주주 명단, 주식의 종류,
+                                지분율을 정리합니다.
+                            </p>
+                        </div>
+
+                        <div className="rounded-2xl bg-slate-50 px-5 py-4">
+                            <p className="text-base font-semibold text-slate-900">
+                                상장 후 일별 주가 이력 추적
+                            </p>
+                            <p className="mt-2 text-sm leading-6 text-slate-600">
+                                상장 후 가격 흐름과 현재가, 수익률을 계속 갱신합니다.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+                    <p className="text-sm font-semibold text-slate-400">NOT INCLUDED</p>
+                    <h2 className="mt-3 text-2xl font-semibold text-slate-900">
+                        현재 제외하는 범위
+                    </h2>
+
+                    <div className="mt-6 space-y-4">
+                        <div className="rounded-2xl bg-slate-50 px-5 py-4">
+                            <p className="text-base font-semibold text-slate-900">
+                                최신 주요 주주 지분변화 자동 추적
+                            </p>
+                            <p className="mt-2 text-sm leading-6 text-slate-600">
+                                현재 버전은 IPO 당시 기준선에 집중하고 있으며, 최신 변동 자동
+                                비교는 범위에서 제외합니다.
+                            </p>
+                        </div>
+
+                        <div className="rounded-2xl bg-slate-50 px-5 py-4">
+                            <p className="text-base font-semibold text-slate-900">
+                                최근 공시 목록 자동 노출
+                            </p>
+                            <p className="mt-2 text-sm leading-6 text-slate-600">
+                                현재는 가격 흐름과 IPO 당시 정보에 집중하고 있어 공시 목록은
+                                화면 범위에서 제외합니다.
+                            </p>
+                        </div>
+
+                        <div className="rounded-2xl bg-slate-50 px-5 py-4">
+                            <p className="text-base font-semibold text-slate-900">
+                                IPO 이후 주요 주주 변동 비교 리포트
+                            </p>
+                            <p className="mt-2 text-sm leading-6 text-slate-600">
+                                비교 리포트 자동 생성 기능은 이후 확장 가능성으로 남겨둔 상태입니다.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
         </PageContainer>
     );
 }
