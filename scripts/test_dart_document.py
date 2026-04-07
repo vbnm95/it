@@ -489,6 +489,42 @@ class DartDocumentDebugger:
 
         return v
 
+    def _repair_single_row_before_after_headers(self, headers: list[str]) -> list[str]:
+        if not headers:
+            return headers
+
+        if any(h in {"BEFORE_SHARES", "BEFORE_PCT", "AFTER_SHARES", "AFTER_PCT"} for h in headers):
+            return headers
+
+        repaired = headers[:]
+        pending: Optional[str] = None
+
+        for idx, header in enumerate(headers):
+            if header == "BEFORE":
+                repaired[idx] = "BEFORE_SHARES"
+                pending = "BEFORE"
+                continue
+
+            if header == "AFTER":
+                repaired[idx] = "AFTER_SHARES"
+                pending = "AFTER"
+                continue
+
+            if header == "PCT" and pending == "BEFORE":
+                repaired[idx] = "BEFORE_PCT"
+                pending = None
+                continue
+
+            if header == "PCT" and pending == "AFTER":
+                repaired[idx] = "AFTER_PCT"
+                pending = None
+                continue
+
+            if header not in {"", "NOTE", "비고"}:
+                pending = None
+
+        return repaired
+
     def _flatten_headers(self, table: list[list[str]], header_row_count: int) -> list[str]:
         max_cols = max(len(r) for r in table)
         header_rows: list[list[str]] = []
@@ -503,6 +539,9 @@ class DartDocumentDebugger:
             parts = [header_rows[r][c] for r in range(header_row_count) if header_rows[r][c]]
             merged = "".join(parts)
             flattened.append(self._canonicalize_flattened_header(merged))
+
+        if header_row_count == 1:
+            flattened = self._repair_single_row_before_after_headers(flattened)
 
         return flattened
 
@@ -556,6 +595,35 @@ class DartDocumentDebugger:
         text = holder_name.replace(" ", "")
         return text in {"소계", "합계", "계", "총계"}
 
+    def _looks_like_non_holder_row(self, holder_name: str) -> bool:
+        text = self._normalize_cell(holder_name)
+        compact = re.sub(r"\s+", "", text)
+
+        if not compact:
+            return False
+
+        if compact in {"발행주식총수", "총발행주식수", "발행주식수"}:
+            return True
+
+        if compact.startswith("주석"):
+            return True
+
+        if re.fullmatch(r"주\d+\)?", compact):
+            return True
+
+        return False
+
+    def _to_int(self, value: Any) -> Optional[int]:
+        if value is None:
+            return None
+        text = self._normalize_cell(str(value))
+        if not text:
+            return None
+        text = text.replace(",", "").replace("주", "").strip()
+        if not text or text == "-":
+            return None
+        return to_int(text)
+
     def _to_pct_decimal(self, value: str) -> Optional[Decimal]:
         raw = self._normalize_cell(value)
         raw = raw.replace("%", "").replace("％", "").strip()
@@ -588,6 +656,8 @@ class DartDocumentDebugger:
         group_idx = find_idx("GROUP")
         name_idx = find_idx("HOLDER_NAME")
         stock_type_idx = find_idx("STOCK_TYPE")
+        before_shares_idx = find_idx("BEFORE_SHARES")
+        before_pct_idx = find_idx("BEFORE_PCT")
         after_shares_idx = find_idx("AFTER_SHARES")
         after_pct_idx = find_idx("AFTER_PCT")
 
@@ -613,12 +683,15 @@ class DartDocumentDebugger:
 
             holder_name = row[name_idx] if name_idx < len(row) else ""
             stock_type = row[stock_type_idx] if stock_type_idx is not None and stock_type_idx < len(row) else ""
+            before_shares_raw = row[before_shares_idx] if before_shares_idx is not None and before_shares_idx < len(row) else ""
+            before_pct_raw = row[before_pct_idx] if before_pct_idx is not None and before_pct_idx < len(row) else ""
             after_shares_raw = row[after_shares_idx] if after_shares_idx < len(row) else ""
             after_pct_raw = row[after_pct_idx] if after_pct_idx < len(row) else ""
 
             print(
                 f"[DEBUG][ROW_PARSE] "
                 f"name={holder_name!r}, stock_type={stock_type!r}, "
+                f"before_shares_raw={before_shares_raw!r}, before_pct_raw={before_pct_raw!r}, "
                 f"after_shares_raw={after_shares_raw!r}, after_pct_raw={after_pct_raw!r}"
             )
 
@@ -626,22 +699,22 @@ class DartDocumentDebugger:
                 continue
             if self._looks_like_sum_row(holder_name):
                 continue
-            if holder_name.replace(" ", "") in {"주주명", "성명"}:
+            if self._looks_like_non_holder_row(holder_name):
+                continue
+            if holder_name.replace(" ", "") in {"주주명", "성명", "이름"}:
                 continue
             if re.fullmatch(r"[\d,\.%]+", holder_name):
                 continue
 
-            base_shares = to_int(after_shares_raw)
-            base_pct = self._to_pct_decimal(after_pct_raw)
+            base_shares = self._to_int(before_shares_raw)
+            base_pct = self._to_pct_decimal(before_pct_raw)
+            after_shares = self._to_int(after_shares_raw)
+            after_pct = self._to_pct_decimal(after_pct_raw)
 
-            if base_pct is not None and base_pct > Decimal("1000") and base_shares is None:
-                maybe_shares = to_int(after_pct_raw)
-                maybe_pct = self._to_pct_decimal(after_shares_raw)
-                if maybe_pct is not None and maybe_pct <= Decimal("100"):
-                    base_shares = maybe_shares
-                    base_pct = maybe_pct
+            final_base_shares = after_shares if after_shares is not None else base_shares
+            final_base_pct = after_pct if after_pct is not None else base_pct
 
-            if base_shares is None and base_pct is None:
+            if final_base_shares is None and final_base_pct is None:
                 continue
 
             out.append(
@@ -649,8 +722,8 @@ class DartDocumentDebugger:
                     "holder_key": normalize_holder_key(holder_name),
                     "holder_name": holder_name,
                     "holder_role": stock_type or None,
-                    "base_pct": quant4(base_pct) or Decimal("0"),
-                    "base_shares": base_shares,
+                    "base_pct": quant4(final_base_pct) or Decimal("0"),
+                    "base_shares": final_base_shares,
                     "source_rcept_no": rcept_no,
                     "source_date": source_date,
                 }

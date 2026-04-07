@@ -36,13 +36,13 @@ export default function CompanyCard({ company }: CompanyCardProps) {
                         {company.companyName}
                     </h3>
                     <p className="mt-3 text-sm text-slate-500">
-                        {company.marketType} · {company.stockCode} · {company.industry}
+                        {company.marketType} · {company.stockCode}
                     </p>
                 </div>
 
                 <div className="text-right">
                     <p className="text-xs font-medium text-slate-400">상장 후 수익률</p>
-                    <p className={`mt-2 text-3xl font-semibold ${returnColor}`}>
+                    <p className={`mt-2 text-2xl font-semibold ${returnColor}`}>
                         {formatPercent(company.returnSinceIpo)}
                     </p>
                 </div>
@@ -71,7 +71,9 @@ export default function CompanyCard({ company }: CompanyCardProps) {
                 </div>
 
                 <div className="rounded-2xl bg-slate-50 px-4 py-4">
-                    <p className="text-xs font-medium text-slate-400">지분율 합계</p>
+                    <p className="text-xs font-medium leading-5 text-slate-400">
+                        지분율 합계
+                    </p>
                     <p className="mt-2 text-base font-semibold text-slate-900">
                         {formatPercent(company.keyShareholdersChangePct)}
                     </p>

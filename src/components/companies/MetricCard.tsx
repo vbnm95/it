@@ -2,20 +2,27 @@ interface MetricCardProps {
     label: string;
     value: string;
     subtext?: string;
+    valueClassName?: string;
 }
 
 export default function MetricCard({
     label,
     value,
     subtext,
+    valueClassName,
 }: MetricCardProps) {
     return (
-        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
             <p className="text-sm font-medium text-slate-500">{label}</p>
-            <p className="mt-3 text-2xl font-semibold tracking-tight text-slate-900">
+            <p
+                className={`mt-4 text-2xl font-semibold tracking-tight ${valueClassName ?? "text-slate-900"
+                    }`}
+            >
                 {value}
             </p>
-            {subtext ? <p className="mt-2 text-sm text-slate-500">{subtext}</p> : null}
+            {subtext ? (
+                <p className="mt-3 text-sm text-slate-500">{subtext}</p>
+            ) : null}
         </div>
     );
 }

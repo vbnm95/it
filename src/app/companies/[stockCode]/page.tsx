@@ -23,6 +23,16 @@ function metricValueOrPending(value: string, isMissing: boolean): string {
     return isMissing ? "수집 전" : value;
 }
 
+function getReturnColor(value: number | null): string {
+    if (value === null || !Number.isFinite(value)) {
+        return "text-slate-900";
+    }
+
+    if (value > 0) return "text-emerald-600";
+    if (value < 0) return "text-rose-600";
+    return "text-slate-900";
+}
+
 export default async function CompanyDetailPage({
     params,
 }: CompanyDetailPageProps) {
@@ -85,6 +95,7 @@ export default async function CompanyDetailPage({
                         formatPercent(company.returnSinceIpo),
                         returnMissing,
                     )}
+                    valueClassName={getReturnColor(company.returnSinceIpo)}
                 />
             </section>
 

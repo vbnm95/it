@@ -757,6 +757,42 @@ class DARTClient:
 
         return repaired
 
+    def _repair_single_row_before_after_headers(self, headers: list[str]) -> list[str]:
+        if not headers:
+            return headers
+
+        if any(h in {"BEFORE_SHARES", "BEFORE_PCT", "AFTER_SHARES", "AFTER_PCT"} for h in headers):
+            return headers
+
+        repaired = headers[:]
+        pending: Optional[str] = None
+
+        for idx, header in enumerate(headers):
+            if header == "BEFORE":
+                repaired[idx] = "BEFORE_SHARES"
+                pending = "BEFORE"
+                continue
+
+            if header == "AFTER":
+                repaired[idx] = "AFTER_SHARES"
+                pending = "AFTER"
+                continue
+
+            if header == "PCT" and pending == "BEFORE":
+                repaired[idx] = "BEFORE_PCT"
+                pending = None
+                continue
+
+            if header == "PCT" and pending == "AFTER":
+                repaired[idx] = "AFTER_PCT"
+                pending = None
+                continue
+
+            if header not in {"", "NOTE", "비고"}:
+                pending = None
+
+        return repaired
+
     def _flatten_headers(self, table: list[list[str]], header_row_count: int) -> list[str]:
         max_cols = max(len(r) for r in table)
         header_rows: list[list[str]] = []
@@ -772,11 +808,34 @@ class DARTClient:
             merged = "".join(parts)
             flattened.append(self._canonicalize_flattened_header(merged))
 
-        return self._canonicalize_flattened_headers(flattened)
+        flattened = self._canonicalize_flattened_headers(flattened)
+
+        if header_row_count == 1:
+            flattened = self._repair_single_row_before_after_headers(flattened)
+
+        return flattened
 
     def _looks_like_sum_row(self, holder_name: str) -> bool:
         text = holder_name.replace(" ", "")
         return text in {"소계", "합계", "계", "총계"}
+
+    def _looks_like_non_holder_row(self, holder_name: str) -> bool:
+        text = self._normalize_cell(holder_name)
+        compact = re.sub(r"\s+", "", text)
+
+        if not compact:
+            return False
+
+        if compact in {"발행주식총수", "총발행주식수", "발행주식수"}:
+            return True
+
+        if compact.startswith("주석"):
+            return True
+
+        if re.fullmatch(r"주\d+\)?", compact):
+            return True
+
+        return False
 
     def _to_pct_decimal(self, value: str) -> Optional[Decimal]:
         raw = self._normalize_cell(value)
@@ -809,10 +868,10 @@ class DARTClient:
 
         name_idx = find_idx("HOLDER_NAME", "이름", "주주명", "성명")
         stock_type_idx = find_idx("STOCK_TYPE", "주식종류", "주식의종류")
-        before_shares_idx = find_idx("BEFORE_SHARES", "상장전주식", "BEFORE")
-        before_pct_idx = find_idx("BEFORE_PCT", "상장전PCT", "상장전지분율", "PCT")
-        after_shares_idx = find_idx("AFTER_SHARES", "상장후주식", "상장후SHARES", "AFTER")
-        after_pct_idx = find_idx("AFTER_PCT", "상장후PCT", "상장후지분율", "PCT")
+        before_shares_idx = find_idx("BEFORE_SHARES", "상장전주식", "공모전주식")
+        before_pct_idx = find_idx("BEFORE_PCT", "상장전PCT", "상장전지분율", "공모전지분율")
+        after_shares_idx = find_idx("AFTER_SHARES", "상장후주식", "상장후SHARES", "공모후주식")
+        after_pct_idx = find_idx("AFTER_PCT", "상장후PCT", "상장후지분율", "공모후지분율")
 
         if name_idx is None or after_shares_idx is None or after_pct_idx is None:
             log(f"[DART][WARN] IPO header parse failed / headers={flattened_headers}", verbose=self.verbose)
@@ -831,6 +890,8 @@ class DARTClient:
             if not holder_name:
                 continue
             if self._looks_like_sum_row(holder_name):
+                continue
+            if self._looks_like_non_holder_row(holder_name):
                 continue
             if holder_name.replace(" ", "") in {"주주명", "성명", "이름"}:
                 continue
@@ -890,7 +951,6 @@ class DARTClient:
             ),
             flattened_headers,
         )
-
     def _extract_ipo_holders(self, *, xml_text: str, rcept_no: str, source_date: date) -> list[dict[str, Any]]:
         section3_html = self._extract_section_block(
             xml_text=xml_text,
