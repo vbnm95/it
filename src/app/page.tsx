@@ -3,6 +3,12 @@ import Link from "next/link";
 import PageContainer from "@/components/layout/PageContainer";
 import { getCompanies } from "@/lib/it-data";
 
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Home",
+};
+
 export const dynamic = "force-dynamic";
 
 function average(values: number[]): number | null {

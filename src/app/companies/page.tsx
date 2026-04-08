@@ -1,5 +1,11 @@
 export const dynamic = "force-dynamic";
 
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+    title: "Companies",
+};
+
 import PageContainer from "@/components/layout/PageContainer";
 import CompaniesExplorer from "@/components/companies/CompaniesExplorer";
 import { getCompanies } from "@/lib/it-data";

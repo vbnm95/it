@@ -4,6 +4,9 @@ html,
 body {
   margin: 0;
   padding: 0;
+  background-color: #f4f6f8;
+  /* slate-50 느낌 */
+  color: #0f172a;
 }
 
 * {

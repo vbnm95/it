@@ -1,5 +1,11 @@
 import PageContainer from "@/components/layout/PageContainer";
 
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+    title: "About",
+};
+
 export default function AboutPage() {
     return (
         <PageContainer>
