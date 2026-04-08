@@ -591,9 +591,31 @@ class DartDocumentDebugger:
     # =========================================================
     # section III - parse
     # =========================================================
+    
     def _looks_like_sum_row(self, holder_name: str) -> bool:
-        text = holder_name.replace(" ", "")
-        return text in {"소계", "합계", "계", "총계"}
+        text = self._normalize_cell(holder_name)
+        compact = re.sub(r"\s+", "", text)
+
+        if not compact:
+            return False
+
+        exact_tokens = {
+            "소계",
+            "합계",
+            "계",
+            "총계",
+        }
+        if compact in exact_tokens:
+            return True
+
+        if compact.endswith("소계"):
+            return True
+
+        if compact.endswith("합계"):
+            return True
+
+        return False
+
 
     def _looks_like_non_holder_row(self, holder_name: str) -> bool:
         text = self._normalize_cell(holder_name)
@@ -602,7 +624,17 @@ class DartDocumentDebugger:
         if not compact:
             return False
 
-        if compact in {"발행주식총수", "총발행주식수", "발행주식수"}:
+        exact_tokens = {
+            "발행주식총수",
+            "총발행주식수",
+            "발행주식수",
+            "전체주식수",
+            "전체주식수합계",
+        }
+        if compact in exact_tokens:
+            return True
+
+        if "전체주식수" in compact:
             return True
 
         if compact.startswith("주석"):
@@ -682,7 +714,10 @@ class DartDocumentDebugger:
                 current_group = group_val
 
             holder_name = row[name_idx] if name_idx < len(row) else ""
+
             stock_type = row[stock_type_idx] if stock_type_idx is not None and stock_type_idx < len(row) else ""
+            stock_type = self._normalize_cell(stock_type)
+            
             before_shares_raw = row[before_shares_idx] if before_shares_idx is not None and before_shares_idx < len(row) else ""
             before_pct_raw = row[before_pct_idx] if before_pct_idx is not None and before_pct_idx < len(row) else ""
             after_shares_raw = row[after_shares_idx] if after_shares_idx < len(row) else ""
@@ -717,11 +752,13 @@ class DartDocumentDebugger:
             if final_base_shares is None and final_base_pct is None:
                 continue
 
+            stock_type = self._normalize_cell(stock_type)
+            
             out.append(
                 {
                     "holder_key": normalize_holder_key(holder_name),
                     "holder_name": holder_name,
-                    "holder_role": stock_type or None,
+                    "holder_role": stock_type or "보통주",
                     "base_pct": quant4(final_base_pct) or Decimal("0"),
                     "base_shares": final_base_shares,
                     "source_rcept_no": rcept_no,

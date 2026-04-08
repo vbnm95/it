@@ -814,10 +814,31 @@ class DARTClient:
             flattened = self._repair_single_row_before_after_headers(flattened)
 
         return flattened
-
+    
     def _looks_like_sum_row(self, holder_name: str) -> bool:
-        text = holder_name.replace(" ", "")
-        return text in {"소계", "합계", "계", "총계"}
+        text = self._normalize_cell(holder_name)
+        compact = re.sub(r"\s+", "", text)
+
+        if not compact:
+            return False
+
+        exact_tokens = {
+            "소계",
+            "합계",
+            "계",
+            "총계",
+        }
+        if compact in exact_tokens:
+            return True
+
+        if compact.endswith("소계"):
+            return True
+
+        if compact.endswith("합계"):
+            return True
+
+        return False
+
 
     def _looks_like_non_holder_row(self, holder_name: str) -> bool:
         text = self._normalize_cell(holder_name)
@@ -826,7 +847,17 @@ class DARTClient:
         if not compact:
             return False
 
-        if compact in {"발행주식총수", "총발행주식수", "발행주식수"}:
+        exact_tokens = {
+            "발행주식총수",
+            "총발행주식수",
+            "발행주식수",
+            "전체주식수",
+            "전체주식수합계",
+        }
+        if compact in exact_tokens:
+            return True
+
+        if "전체주식수" in compact:
             return True
 
         if compact.startswith("주석"):
@@ -899,6 +930,7 @@ class DARTClient:
                 continue
 
             stock_type_value = row[stock_type_idx] if stock_type_idx is not None and stock_type_idx < len(row) else ""
+            stock_type_value = self._normalize_cell(stock_type_value)
 
             before_shares_raw = row[before_shares_idx] if before_shares_idx is not None and before_shares_idx < len(row) else ""
             before_pct_raw = row[before_pct_idx] if before_pct_idx is not None and before_pct_idx < len(row) else ""
@@ -927,7 +959,7 @@ class DARTClient:
             if not holder_key:
                 continue
 
-            holder_role = stock_type_value or None
+            holder_role = stock_type_value if stock_type_value else "보통주"
 
             out.append(
                 {
