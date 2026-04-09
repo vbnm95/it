@@ -1,5 +1,5 @@
+import Image from "next/image";
 import Link from "next/link";
-import { LineChart } from "lucide-react";
 
 const navItems = [
     { href: "/", label: "Home" },
@@ -12,9 +12,14 @@ export default function AppHeader() {
         <header className="border-b border-slate-200 bg-white/90 backdrop-blur">
             <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
                 <Link href="/" className="flex items-center gap-3">
-                    <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-sm">
-                        <LineChart className="h-5 w-5" />
-                    </span>
+                    <Image
+                        src="/logo-mark.png"
+                        alt="IPO Trace logo"
+                        width={44}
+                        height={44}
+                        className="h-11 w-11 rounded-2xl shadow-sm"
+                        priority
+                    />
 
                     <div>
                         <p className="text-base font-semibold tracking-tight text-slate-900">
