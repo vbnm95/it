@@ -12,12 +12,15 @@ from utils import normalize_text
 EXCLUDE_NAME_KEYWORDS = (
     "스팩",
     "SPAC",
+    "기업인수목적",
     "리츠",
     "REIT",
 )
 
 EXCLUDE_SECURITY_GROUP_KEYWORDS = (
     "스팩",
+    "SPAC",
+    "기업인수목적",
     "리츠",
     "ETF",
     "ETN",
@@ -25,6 +28,12 @@ EXCLUDE_SECURITY_GROUP_KEYWORDS = (
     "선박투자",
     "인프라투융자",
     "인프라펀드",
+)
+
+EXCLUDE_SECTOR_KEYWORDS = (
+    "스팩",
+    "SPAC",
+    "기업인수목적",
 )
 
 EXCLUDE_STOCK_CERT_TYPE_KEYWORDS = (
@@ -46,8 +55,8 @@ def row_to_dict(row: KRXBaseRow) -> dict[str, Any]:
 
 
 def _contains_any(value: Optional[str], keywords: tuple[str, ...]) -> bool:
-    text = normalize_text(value).upper()
-    return any(keyword.upper() in text for keyword in keywords)
+    text = normalize_text(value).replace(" ", "").upper()
+    return any(keyword.replace(" ", "").upper() in text for keyword in keywords)
 
 
 def is_recent_listing(row: KRXBaseRow, *, as_of: date) -> bool:
@@ -64,6 +73,9 @@ def is_excluded_security(row: KRXBaseRow) -> tuple[bool, Optional[str]]:
 
     if _contains_any(row.stock_cert_type, EXCLUDE_STOCK_CERT_TYPE_KEYWORDS):
         return True, "stock_cert_type_excluded"
+
+    if _contains_any(row.sector_name, EXCLUDE_SECTOR_KEYWORDS):
+        return True, "sector_name_excluded"
 
     return False, None
 
